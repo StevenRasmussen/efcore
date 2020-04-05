@@ -5,6 +5,7 @@ using System;
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Utilities;
 
 // ReSharper disable once CheckNamespace
@@ -360,15 +361,22 @@ namespace Microsoft.EntityFrameworkCore
         /// </summary>
         /// <param name="propertyBuilder"> The builder for the property being configured. </param>
         /// <param name="sql"> The SQL expression that computes values for the column. </param>
+        /// <param name="stored">
+        ///     If <c>true</c>, the computed value is calculated on row modification and stored in the database like a regular column.
+        ///     If <c>false</c>, the value is computed when the value is read, and does not occupy any actual storage.
+        ///     <c>null</c> selects the database provider default.
+        /// </param>
         /// <returns> The same builder instance so that multiple calls can be chained. </returns>
         public static PropertyBuilder HasComputedColumnSql(
             [NotNull] this PropertyBuilder propertyBuilder,
-            [CanBeNull] string sql)
+            [CanBeNull] string sql,
+            [CanBeNull] bool? stored = null)
         {
             Check.NotNull(propertyBuilder, nameof(propertyBuilder));
             Check.NullButNotEmpty(sql, nameof(sql));
 
             propertyBuilder.Metadata.SetComputedColumnSql(sql);
+            propertyBuilder.Metadata.SetComputedColumnIsStored(stored);
 
             return propertyBuilder;
         }
@@ -379,11 +387,17 @@ namespace Microsoft.EntityFrameworkCore
         /// <typeparam name="TProperty"> The type of the property being configured. </typeparam>
         /// <param name="propertyBuilder"> The builder for the property being configured. </param>
         /// <param name="sql"> The SQL expression that computes values for the column. </param>
+        /// <param name="stored">
+        ///     If <c>true</c>, the computed value is calculated on row modification and stored in the database like a regular column.
+        ///     If <c>false</c>, the value is computed when the value is read, and does not occupy any actual storage.
+        ///     <c>null</c> selects the database provider default.
+        /// </param>
         /// <returns> The same builder instance so that multiple calls can be chained. </returns>
         public static PropertyBuilder<TProperty> HasComputedColumnSql<TProperty>(
             [NotNull] this PropertyBuilder<TProperty> propertyBuilder,
-            [CanBeNull] string sql)
-            => (PropertyBuilder<TProperty>)HasComputedColumnSql((PropertyBuilder)propertyBuilder, sql);
+            [CanBeNull] string sql,
+            [CanBeNull] bool? stored = null)
+            => (PropertyBuilder<TProperty>)HasComputedColumnSql((PropertyBuilder)propertyBuilder, sql, stored);
 
         /// <summary>
         ///     Configures the property to map to a computed column when targeting a relational database.

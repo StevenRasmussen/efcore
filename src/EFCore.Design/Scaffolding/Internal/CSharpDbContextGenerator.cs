@@ -644,6 +644,7 @@ namespace Microsoft.EntityFrameworkCore.Scaffolding.Internal
             RemoveAnnotation(ref annotations, RelationalAnnotationNames.DefaultValueSql);
             RemoveAnnotation(ref annotations, RelationalAnnotationNames.Comment);
             RemoveAnnotation(ref annotations, RelationalAnnotationNames.ComputedColumnSql);
+            RemoveAnnotation(ref annotations, RelationalAnnotationNames.ComputedColumnIsStored);
             RemoveAnnotation(ref annotations, RelationalAnnotationNames.IsFixedLength);
             RemoveAnnotation(ref annotations, RelationalAnnotationNames.TableColumnMappings);
             RemoveAnnotation(ref annotations, RelationalAnnotationNames.ViewColumnMappings);
@@ -750,7 +751,10 @@ namespace Microsoft.EntityFrameworkCore.Scaffolding.Internal
             {
                 lines.Add(
                     $".{nameof(RelationalPropertyBuilderExtensions.HasComputedColumnSql)}" +
-                    $"({_code.Literal(property.GetComputedColumnSql())})");
+                    $"({_code.Literal(property.GetComputedColumnSql())}" +
+                    (property.GetComputedColumnIsStored() is bool computedColumnIsStored
+                        ? $", stored: {_code.Literal(computedColumnIsStored)})"
+                        : ")"));
             }
 
             var valueGenerated = property.ValueGenerated;

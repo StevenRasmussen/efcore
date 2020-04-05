@@ -344,8 +344,11 @@ namespace Microsoft.EntityFrameworkCore
                     Assert.Contains("2", sumColumn.DefaultValueSql);
                 });
 
-        [ConditionalFact]
-        public virtual Task Add_column_with_computedSql()
+        [ConditionalTheory]
+        [InlineData(true)]
+        [InlineData(false)]
+        [InlineData(null)]
+        public virtual Task Add_column_with_computedSql(bool? computedColumnStored)
             => Test(
                 builder => builder.Entity(
                     "People", e =>
@@ -355,13 +358,16 @@ namespace Microsoft.EntityFrameworkCore
                         e.Property<int>("Y");
                     }),
                 builder => { },
-                builder => builder.Entity("People").Property<string>("Sum").HasComputedColumnSql($"{DelimitIdentifier("X")} + {DelimitIdentifier("Y")}"),
+                builder => builder.Entity("People").Property<string>("Sum")
+                    .HasComputedColumnSql($"{DelimitIdentifier("X")} + {DelimitIdentifier("Y")}", computedColumnStored),
                 model =>
                 {
                     var table = Assert.Single(model.Tables);
                     var sumColumn = Assert.Single(table.Columns, c => c.Name == "Sum");
                     Assert.Contains("X", sumColumn.ComputedColumnSql);
                     Assert.Contains("Y", sumColumn.ComputedColumnSql);
+                    if (computedColumnStored != null)
+                        Assert.Equal(computedColumnStored, sumColumn.ComputedColumnIsStored);
                 });
 
         // TODO: Check this out
@@ -567,8 +573,11 @@ namespace Microsoft.EntityFrameworkCore
                     Assert.Contains(table.Columns.Single(c => c.Name == "LastName"), index.Columns);
                 });
 
-        [ConditionalFact]
-        public virtual Task Alter_column_make_computed()
+        [ConditionalTheory]
+        [InlineData(true)]
+        [InlineData(false)]
+        [InlineData(null)]
+        public virtual Task Alter_column_make_computed(bool? computedColumnStored)
             => Test(
                 builder => builder.Entity(
                     "People", e =>
@@ -578,7 +587,8 @@ namespace Microsoft.EntityFrameworkCore
                         e.Property<int>("Y");
                     }),
                 builder => builder.Entity("People").Property<int>("Sum"),
-                builder => builder.Entity("People").Property<int>("Sum").HasComputedColumnSql($"{DelimitIdentifier("X")} + {DelimitIdentifier("Y")}"),
+                builder => builder.Entity("People").Property<int>("Sum")
+                    .HasComputedColumnSql($"{DelimitIdentifier("X")} + {DelimitIdentifier("Y")}", computedColumnStored),
                 model =>
                 {
                     var table = Assert.Single(model.Tables);
@@ -586,6 +596,8 @@ namespace Microsoft.EntityFrameworkCore
                     Assert.Contains("X", sumColumn.ComputedColumnSql);
                     Assert.Contains("Y", sumColumn.ComputedColumnSql);
                     Assert.Contains("+", sumColumn.ComputedColumnSql);
+                    if (computedColumnStored != null)
+                        Assert.Equal(computedColumnStored, sumColumn.ComputedColumnIsStored);
                 });
 
         [ConditionalFact]
@@ -609,6 +621,28 @@ namespace Microsoft.EntityFrameworkCore
                     Assert.Contains("Y", sumColumn.ComputedColumnSql);
                     Assert.Contains("-", sumColumn.ComputedColumnSql);
                 });
+
+        [ConditionalFact]
+        public virtual Task Alter_column_change_computed_type()
+            => Test(
+                builder => builder.Entity(
+                    "People", e =>
+                        {
+                            e.Property<int>("Id");
+                            e.Property<int>("X");
+                            e.Property<int>("Y");
+                            e.Property<int>("Sum");
+                        }),
+                builder => builder.Entity("People").Property<int>("Sum")
+                    .HasComputedColumnSql($"{DelimitIdentifier("X")} + {DelimitIdentifier("Y")}", stored: false),
+                builder => builder.Entity("People").Property<int>("Sum")
+                    .HasComputedColumnSql($"{DelimitIdentifier("X")} + {DelimitIdentifier("Y")}", stored: true),
+                model =>
+                    {
+                        var table = Assert.Single(model.Tables);
+                        var sumColumn = Assert.Single(table.Columns, c => c.Name == "Sum");
+                        Assert.True(sumColumn.ComputedColumnIsStored);
+                    });
 
         [ConditionalFact]
         public virtual Task Alter_column_add_comment()
