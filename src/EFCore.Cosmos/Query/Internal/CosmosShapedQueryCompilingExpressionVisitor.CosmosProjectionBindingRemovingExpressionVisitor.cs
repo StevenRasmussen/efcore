@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -366,9 +365,12 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
                 var includeMethod = navigation.IsCollection ? _includeCollectionMethodInfo : _includeReferenceMethodInfo;
                 var includingClrType = navigation.DeclaringEntityType.ClrType;
                 var relatedEntityClrType = navigation.TargetEntityType.ClrType;
+#pragma warning disable EF1001 // Internal EF Core API usage.
+                // #16707
                 var entityEntryVariable = _trackQueryResults
                     ? shaperBlock.Variables.Single(v => v.Type == typeof(InternalEntityEntry))
                     : (Expression)Expression.Constant(null, typeof(InternalEntityEntry));
+#pragma warning restore EF1001 // Internal EF Core API usage.
                 var concreteEntityTypeVariable = shaperBlock.Variables.Single(v => v.Type == typeof(IEntityType));
                 var inverseNavigation = navigation.Inverse;
                 var fixup = GenerateFixup(
@@ -395,7 +397,10 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
                     .GetDeclaredMethod(nameof(IncludeReference));
 
             private static void IncludeReference<TIncludingEntity, TIncludedEntity>(
+#pragma warning disable EF1001 // Internal EF Core API usage.
+                // #16707
                 InternalEntityEntry entry,
+#pragma warning restore EF1001 // Internal EF Core API usage.
                 object entity,
                 IEntityType entityType,
                 TIncludedEntity relatedEntity,
@@ -427,7 +432,10 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
                 // For non-null relatedEntity StateManager will set the flag
                 else if (relatedEntity == null)
                 {
+#pragma warning disable EF1001 // Internal EF Core API usage.
+                    // #16707
                     entry.SetIsLoaded(navigation);
+#pragma warning restore EF1001 // Internal EF Core API usage.
                 }
             }
 
@@ -436,7 +444,10 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
                     .GetDeclaredMethod(nameof(IncludeCollection));
 
             private static void IncludeCollection<TIncludingEntity, TIncludedEntity>(
+#pragma warning disable EF1001 // Internal EF Core API usage.
+                // #16707
                 InternalEntityEntry entry,
+#pragma warning restore EF1001 // Internal EF Core API usage.
                 object entity,
                 IEntityType entityType,
                 IEnumerable<TIncludedEntity> relatedEntities,
@@ -474,7 +485,10 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
                 }
                 else
                 {
+#pragma warning disable EF1001 // Internal EF Core API usage.
+                    // #16707
                     entry.SetIsLoaded(navigation);
+#pragma warning restore EF1001 // Internal EF Core API usage.
                     if (relatedEntities != null)
                     {
                         using var enumerator = relatedEntities.GetEnumerator();
