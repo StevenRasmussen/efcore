@@ -127,7 +127,7 @@ namespace Microsoft.EntityFrameworkCore
 
             IncludeProperties(
                 indexBuilder,
-                includeExpression.GetPropertyAccessList().Select(MemberInfoExtensions.GetSimpleMemberName).ToArray());
+                includeExpression.GetMemberAccessList().Select(MemberInfoExtensions.GetSimpleMemberName).ToArray());
 
             return indexBuilder;
         }
