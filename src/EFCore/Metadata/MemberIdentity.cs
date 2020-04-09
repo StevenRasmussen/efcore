@@ -16,13 +16,17 @@ namespace Microsoft.EntityFrameworkCore.Metadata
         private readonly object _nameOrMember;
 
         [DebuggerStepThrough]
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
         public MemberIdentity([NotNull] string name)
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
             : this((object)name)
         {
         }
 
         [DebuggerStepThrough]
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
         public MemberIdentity([NotNull] MemberInfo memberInfo)
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
             : this((object)memberInfo)
         {
         }
@@ -33,24 +37,36 @@ namespace Microsoft.EntityFrameworkCore.Metadata
             _nameOrMember = nameOrMember;
         }
 
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
         public bool IsNone() => _nameOrMember == null;
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
         public static readonly MemberIdentity None = new MemberIdentity((object)null);
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 
         [DebuggerStepThrough]
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
         public static MemberIdentity Create([CanBeNull] string name)
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
             => name == null ? None : new MemberIdentity(name);
 
         [DebuggerStepThrough]
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
         public static MemberIdentity Create([CanBeNull] MemberInfo member)
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
             => member == null ? None : new MemberIdentity(member);
 
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
         public string Name
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
         {
             [DebuggerStepThrough] get => MemberInfo?.GetSimpleMemberName() ?? (string)_nameOrMember;
         }
 
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
         public MemberInfo MemberInfo
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
         {
             [DebuggerStepThrough] get => _nameOrMember as MemberInfo;
         }

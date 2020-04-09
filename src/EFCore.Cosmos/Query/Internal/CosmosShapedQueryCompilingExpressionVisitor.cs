@@ -63,7 +63,7 @@ namespace Microsoft.EntityFrameworkCore.Cosmos.Query.Internal
             shaperBody = new JObjectInjectingExpressionVisitor()
                 .Visit(shaperBody);
             shaperBody = InjectEntityMaterializers(shaperBody);
-            shaperBody = new CosmosProjectionBindingRemovingExpressionVisitor(selectExpression, jObjectParameter, IsTracking)
+            shaperBody = new CosmosProjectionBindingRemovingExpressionVisitor(selectExpression, jObjectParameter, QueryCompilationContext.IsTracking)
                 .Visit(shaperBody);
 
             var shaperLambda = Expression.Lambda(

@@ -22,7 +22,9 @@ namespace Microsoft.EntityFrameworkCore
     /// </summary>
     public static class EntityTypeExtensions
     {
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
         public static IEnumerable<IEntityType> GetConcreteDerivedTypesInclusive([NotNull] this IEntityType entityType)
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
             => entityType.GetDerivedTypesInclusive().Where(et => !et.IsAbstract());
 
         /// <summary>

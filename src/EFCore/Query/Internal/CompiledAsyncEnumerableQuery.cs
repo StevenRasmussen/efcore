@@ -111,8 +111,6 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
         /// </summary>
         protected override Func<QueryContext, IAsyncEnumerable<TResult>> CreateCompiledQuery(
             IQueryCompiler queryCompiler, Expression expression)
-        {
-            return queryCompiler.CreateCompiledAsyncQuery<IAsyncEnumerable<TResult>>(expression);
-        }
+            => queryCompiler.CreateCompiledAsyncQuery<IAsyncEnumerable<TResult>>(expression);
     }
 }

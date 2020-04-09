@@ -9,7 +9,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Internal;
 // ReSharper disable once CheckNamespace
 namespace Microsoft.EntityFrameworkCore
 {
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
     public static class IndexExtensions
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
     {
         /// <summary>
         ///     <para>

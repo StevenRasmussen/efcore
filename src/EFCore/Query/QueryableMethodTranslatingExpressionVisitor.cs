@@ -11,29 +11,55 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Utilities;
 
 namespace Microsoft.EntityFrameworkCore.Query
 {
+    /// <summary>
+    ///     <para>
+    ///         A class that translate queryable methods in a query.
+    ///     </para>
+    ///     <para>
+    ///         This type is typically used by database providers (and other extensions). It is generally
+    ///         not used in application code.
+    ///     </para>
+    /// </summary>
     public abstract class QueryableMethodTranslatingExpressionVisitor : ExpressionVisitor
     {
         private readonly bool _subquery;
         private readonly EntityShaperNullableMarkingExpressionVisitor _entityShaperNullableMarkingExpressionVisitor;
 
+        /// <summary>
+        ///     Creates a new instance of the <see cref="QueryableMethodTranslatingExpressionVisitor" /> class.
+        /// </summary>
+        /// <param name="dependencies"> Parameter object containing dependencies for this class. </param>
+        /// <param name="queryCompilationContext"> The query compilation context object to use. </param>
+        /// <param name="subquery"> A bool value indicating whether it is for a subquery translation. </param>
         protected QueryableMethodTranslatingExpressionVisitor(
             [NotNull] QueryableMethodTranslatingExpressionVisitorDependencies dependencies,
+            [NotNull] QueryCompilationContext queryCompilationContext,
             bool subquery)
         {
             Check.NotNull(dependencies, nameof(dependencies));
+            Check.NotNull(queryCompilationContext, nameof(queryCompilationContext));
 
             Dependencies = dependencies;
+            QueryCompilationContext = queryCompilationContext;
             _subquery = subquery;
             _entityShaperNullableMarkingExpressionVisitor = new EntityShaperNullableMarkingExpressionVisitor();
         }
 
+        /// <summary>
+        ///     Parameter object containing service dependencies.
+        /// </summary>
         protected virtual QueryableMethodTranslatingExpressionVisitorDependencies Dependencies { get; }
 
+        /// <summary>
+        ///     The query compilation context object for current compilation.
+        /// </summary>
+        protected virtual QueryCompilationContext QueryCompilationContext { get; }
+
+        /// <inheritdoc />
         protected override Expression VisitExtension(Expression extensionExpression)
         {
             Check.NotNull(extensionExpression, nameof(extensionExpression));
@@ -46,6 +72,7 @@ namespace Microsoft.EntityFrameworkCore.Query
             };
         }
 
+        /// <inheritdoc />
         protected override Expression VisitMethodCall(MethodCallExpression methodCallExpression)
         {
             Check.NotNull(methodCallExpression, nameof(methodCallExpression));
@@ -453,6 +480,11 @@ namespace Microsoft.EntityFrameworkCore.Query
             }
         }
 
+        /// <summary>
+        ///     Marks entity shaper in given shaper expression as nullable.
+        /// </summary>
+        /// <param name="shaperExpression"> The shaper expression to process. </param>
+        /// <returns> New shaper expression in which all entity shapers are nullable. </returns>
         protected virtual Expression MarkShaperNullable([NotNull] Expression shaperExpression)
         {
             Check.NotNull(shaperExpression, nameof(shaperExpression));
@@ -460,15 +492,24 @@ namespace Microsoft.EntityFrameworkCore.Query
             return _entityShaperNullableMarkingExpressionVisitor.Visit(shaperExpression);
         }
 
+        /// <summary>
+        ///      Translates result selector for join operation.
+        /// </summary>
+        /// <param name="outer"> The shaped query expression for outer source. The join on the query expression is already performed on outer query expression. </param>
+        /// <param name="resultSelector"> The result selector lambda to translate. </param>
+        /// <param name="innerShaper"> The shaper for inner source. </param>
+        /// <param name="transparentIdentifierType"> The clr type of transparent identifier created from result. </param>
+        /// <returns> The shaped query expression after translation of result selector. </returns>
         protected virtual ShapedQueryExpression TranslateResultSelectorForJoin(
             [NotNull] ShapedQueryExpression outer,
             [NotNull] LambdaExpression resultSelector,
             [NotNull] Expression innerShaper,
-            [CanBeNull] Type transparentIdentifierType)
+            [NotNull] Type transparentIdentifierType)
         {
             Check.NotNull(outer, nameof(outer));
             Check.NotNull(resultSelector, nameof(resultSelector));
             Check.NotNull(innerShaper, nameof(innerShaper));
+            Check.NotNull(transparentIdentifierType, nameof(transparentIdentifierType));
 
             outer = outer.UpdateShaperExpression(
                 CombineShapers(outer.QueryExpression, outer.ShaperExpression, innerShaper, transparentIdentifierType));
@@ -546,6 +587,11 @@ namespace Microsoft.EntityFrameworkCore.Query
             return Expression.Field(targetExpression, fieldInfo);
         }
 
+        /// <summary>
+        ///     Translates given subquery by creating a subquery visitor.
+        /// </summary>
+        /// <param name="expression"> The subquery expression to translate. </param>
+        /// <returns> The translation of given subquery. </returns>
         public virtual ShapedQueryExpression TranslateSubquery([NotNull] Expression expression)
         {
             Check.NotNull(expression, nameof(expression));
@@ -553,46 +599,155 @@ namespace Microsoft.EntityFrameworkCore.Query
             return (ShapedQueryExpression)CreateSubqueryVisitor().Visit(expression);
         }
 
+        /// <summary>
+        ///     Creates a visitor customized to translate subquery.
+        /// </summary>
+        /// <returns> A visitor to translate subquery. </returns>
         protected abstract QueryableMethodTranslatingExpressionVisitor CreateSubqueryVisitor();
 
+        /// <summary>
+        ///     Creates a <see cref="ShapedQueryExpression"/> for given type by finding it's entity type in the model.
+        /// </summary>
+        /// <param name="elementType"> The clr type of the entity type to look for. </param>
+        /// <returns> A shaped query expression for given clr type. </returns>
         [Obsolete("Use overload which takes IEntityType.")]
         protected abstract ShapedQueryExpression CreateShapedQueryExpression([NotNull] Type elementType);
+        /// <summary>
+        ///     Creates a <see cref="ShapedQueryExpression"/> for given entity type.
+        /// </summary>
+        /// <param name="entityType"> The the entity type. </param>
+        /// <returns> A shaped query expression for given entity type. </returns>
         protected abstract ShapedQueryExpression CreateShapedQueryExpression([NotNull] IEntityType entityType);
-        protected abstract ShapedQueryExpression TranslateAll([NotNull] ShapedQueryExpression source, [NotNull] LambdaExpression predicate);
-        protected abstract ShapedQueryExpression TranslateAny([NotNull] ShapedQueryExpression source, [NotNull] LambdaExpression predicate);
 
+        /// <summary>
+        ///     Translates Queryable.All method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="predicate"> The predicate used with method. </param>
+        /// <returns> The shaped query after translation. </returns>
+        protected abstract ShapedQueryExpression TranslateAll([NotNull] ShapedQueryExpression source, [NotNull] LambdaExpression predicate);
+
+        /// <summary>
+        ///     Translates Queryable.Any method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="predicate"> The predicate used with method. </param>
+        /// <returns> The shaped query after translation. </returns>
+        protected abstract ShapedQueryExpression TranslateAny([NotNull] ShapedQueryExpression source, [CanBeNull] LambdaExpression predicate);
+
+        /// <summary>
+        ///     Translates Queryable.Average method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="selector"> The selector used with method. </param>
+        /// <param name="resultType"> The result type after the operation. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateAverage(
             [NotNull] ShapedQueryExpression source, [CanBeNull] LambdaExpression selector, [NotNull] Type resultType);
 
-        protected abstract ShapedQueryExpression TranslateCast([NotNull] ShapedQueryExpression source, [NotNull] Type resultType);
+        /// <summary>
+        ///     Translates Queryable.Cast method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="castType"> The type result is being casted to. </param>
+        /// <returns> The shaped query after translation. </returns>
+        protected abstract ShapedQueryExpression TranslateCast([NotNull] ShapedQueryExpression source, [NotNull] Type castType);
 
+        /// <summary>
+        ///     Translates Queryable.Concat method over given source.
+        /// </summary>
+        /// <param name="source1"> The shaped query on which the operator is applied. </param>
+        /// <param name="source2"> The other source to perform concat. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateConcat(
             [NotNull] ShapedQueryExpression source1, [NotNull] ShapedQueryExpression source2);
+
+        /// <summary>
+        ///     Translates Queryable.Contains method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="item"> The item to search for. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateContains([NotNull] ShapedQueryExpression source, [NotNull] Expression item);
 
+        /// <summary>
+        ///     Translates Queryable.Count method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="predicate"> The predicate used with method. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateCount(
             [NotNull] ShapedQueryExpression source, [CanBeNull] LambdaExpression predicate);
 
+        /// <summary>
+        ///     Translates Queryable.DefaultIfEmpty method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="defaultValue"> The default value to use. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateDefaultIfEmpty(
             [NotNull] ShapedQueryExpression source, [CanBeNull] Expression defaultValue);
 
+        /// <summary>
+        ///     Translates Queryable.Distinct method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateDistinct([NotNull] ShapedQueryExpression source);
 
+        /// <summary>
+        ///     Translates Queryable.ElementAt/ElementAtOrDefault method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="index"> The index of the element. </param>
+        /// <param name="returnDefault"> A value indicating whether default should be returned or throw. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateElementAtOrDefault(
             [NotNull] ShapedQueryExpression source, [NotNull] Expression index, bool returnDefault);
 
+        /// <summary>
+        ///     Translates Queryable.Except method over given source.
+        /// </summary>
+        /// <param name="source1"> The shaped query on which the operator is applied. </param>
+        /// <param name="source2"> The other source to perform except with. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateExcept(
             [NotNull] ShapedQueryExpression source1, [NotNull] ShapedQueryExpression source2);
 
+        /// <summary>
+        ///     Translates Queryable.First/FirstOrDefault method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="predicate"> The predicate used with method. </param>
+        /// <param name="returnType"> The return type of result. </param>
+        /// <param name="returnDefault"> A value indicating whether default should be returned or throw. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateFirstOrDefault(
             [NotNull] ShapedQueryExpression source, [CanBeNull] LambdaExpression predicate, [NotNull] Type returnType, bool returnDefault);
 
+        /// <summary>
+        ///     Translates Queryable.GroupBy method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="keySelector"> The key selector used with method. </param>
+        /// <param name="elementSelector"> The element selector used with method. </param>
+        /// <param name="resultSelector"> The result selector used with method. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateGroupBy(
             [NotNull] ShapedQueryExpression source,
             [NotNull] LambdaExpression keySelector,
             [CanBeNull] LambdaExpression elementSelector,
             [CanBeNull] LambdaExpression resultSelector);
 
+        /// <summary>
+        ///     Translates Queryable.GroupJoin method over given source.
+        /// </summary>
+        /// <param name="outer"> The shaped query on which the operator is applied. </param>
+        /// <param name="inner"> The inner shaped query to perform join with. </param>
+        /// <param name="outerKeySelector"> The key selector for outer source. </param>
+        /// <param name="innerKeySelector"> The key selector for inner source. </param>
+        /// <param name="resultSelector"> The result selector used with method. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateGroupJoin(
             [NotNull] ShapedQueryExpression outer,
             [NotNull] ShapedQueryExpression inner,
@@ -600,9 +755,24 @@ namespace Microsoft.EntityFrameworkCore.Query
             [NotNull] LambdaExpression innerKeySelector,
             [NotNull] LambdaExpression resultSelector);
 
+        /// <summary>
+        ///     Translates Queryable.Intersect method over given source.
+        /// </summary>
+        /// <param name="source1"> The shaped query on which the operator is applied. </param>
+        /// <param name="source2"> The other source to perform intersect with. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateIntersect(
             [NotNull] ShapedQueryExpression source1, [NotNull] ShapedQueryExpression source2);
 
+        /// <summary>
+        ///     Translates Queryable.Join method over given source.
+        /// </summary>
+        /// <param name="outer"> The shaped query on which the operator is applied. </param>
+        /// <param name="inner"> The inner shaped query to perform join with. </param>
+        /// <param name="outerKeySelector"> The key selector for outer source. </param>
+        /// <param name="innerKeySelector"> The key selector for inner source. </param>
+        /// <param name="resultSelector"> The result selector used with method. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateJoin(
             [NotNull] ShapedQueryExpression outer,
             [NotNull] ShapedQueryExpression inner,
@@ -610,6 +780,15 @@ namespace Microsoft.EntityFrameworkCore.Query
             [CanBeNull] LambdaExpression innerKeySelector,
             [NotNull] LambdaExpression resultSelector);
 
+        /// <summary>
+        ///     Translates LeftJoin method over given source.
+        /// </summary>
+        /// <param name="outer"> The shaped query on which the operator is applied. </param>
+        /// <param name="inner"> The inner shaped query to perform join with. </param>
+        /// <param name="outerKeySelector"> The key selector for outer source. </param>
+        /// <param name="innerKeySelector"> The key selector for inner source. </param>
+        /// <param name="resultSelector"> The result selector used with method. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateLeftJoin(
             [NotNull] ShapedQueryExpression outer,
             [NotNull] ShapedQueryExpression inner,
@@ -617,57 +796,180 @@ namespace Microsoft.EntityFrameworkCore.Query
             [CanBeNull] LambdaExpression innerKeySelector,
             [NotNull] LambdaExpression resultSelector);
 
+        /// <summary>
+        ///     Translates Queryable.Last/LastOrDefault method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="predicate"> The predicate used with method. </param>
+        /// <param name="returnType"> The return type of result. </param>
+        /// <param name="returnDefault"> A value indicating whether default should be returned or throw. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateLastOrDefault(
             [NotNull] ShapedQueryExpression source, [CanBeNull] LambdaExpression predicate, [NotNull] Type returnType, bool returnDefault);
 
+        /// <summary>
+        ///     Translates Queryable.LongCount method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="predicate"> The predicate used with method. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateLongCount(
             [NotNull] ShapedQueryExpression source, [CanBeNull] LambdaExpression predicate);
 
+        /// <summary>
+        ///     Translates Queryable.Max method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="selector"> The selector used with method. </param>
+        /// <param name="resultType"> The result type after the operation. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateMax(
             [NotNull] ShapedQueryExpression source, [CanBeNull] LambdaExpression selector, [NotNull] Type resultType);
 
+        /// <summary>
+        ///     Translates Queryable.Min method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="selector"> The selector used with method. </param>
+        /// <param name="resultType"> The result type after the operation. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateMin(
             [NotNull] ShapedQueryExpression source, [CanBeNull] LambdaExpression selector, [NotNull] Type resultType);
 
+        /// <summary>
+        ///     Translates Queryable.OfType method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="resultType"> The type of result which is being filtered with. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateOfType([NotNull] ShapedQueryExpression source, [NotNull] Type resultType);
 
+        /// <summary>
+        ///     Translates Queryable.OrderBy/OrderByDescending method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="keySelector"> The key selector used with method. </param>
+        /// <param name="ascending"> A value indicating whether the ordering is ascending or not. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateOrderBy(
             [NotNull] ShapedQueryExpression source, [NotNull] LambdaExpression keySelector, bool ascending);
 
+        /// <summary>
+        ///     Translates Queryable.Reverse method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateReverse([NotNull] ShapedQueryExpression source);
 
+        /// <summary>
+        ///     Translates Queryable.Select method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="selector"> The selector used with method. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateSelect(
             [NotNull] ShapedQueryExpression source, [NotNull] LambdaExpression selector);
 
+        /// <summary>
+        ///     Translates Queryable.SelectMany method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="collectionSelector"> The collection selector used with method. </param>
+        /// <param name="resultSelector"> The result selector used with method. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateSelectMany(
             [NotNull] ShapedQueryExpression source, [NotNull] LambdaExpression collectionSelector, [NotNull] LambdaExpression resultSelector);
 
+        /// <summary>
+        ///     Translates Queryable.SelectMany method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="selector"> The selector used with method. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateSelectMany(
             [NotNull] ShapedQueryExpression source, [NotNull] LambdaExpression selector);
 
+        /// <summary>
+        ///     Translates Queryable.Single/SingleOrDefault method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="predicate"> The predicate used with method. </param>
+        /// <param name="returnType"> The return type of result. </param>
+        /// <param name="returnDefault"> A value indicating whether default should be returned or throw. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateSingleOrDefault(
             [NotNull] ShapedQueryExpression source, [CanBeNull] LambdaExpression predicate, [NotNull] Type returnType, bool returnDefault);
 
+        /// <summary>
+        ///     Translates Queryable.Skip method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="count"> The count used with method. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateSkip(
             [NotNull] ShapedQueryExpression source, [NotNull] Expression count);
 
+        /// <summary>
+        ///     Translates Queryable.SkipWhile method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="predicate"> The predicate used with method. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateSkipWhile(
             [NotNull] ShapedQueryExpression source, [NotNull] LambdaExpression predicate);
 
+        /// <summary>
+        ///     Translates Queryable.Sum method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="selector"> The selector used with method. </param>
+        /// <param name="resultType"> The result type after the operation. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateSum(
             [NotNull] ShapedQueryExpression source, [CanBeNull] LambdaExpression selector, [NotNull] Type resultType);
 
+        /// <summary>
+        ///     Translates Queryable.Take method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="count"> The count used with method. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateTake([NotNull] ShapedQueryExpression source, [NotNull] Expression count);
 
+        /// <summary>
+        ///     Translates Queryable.TakeWhile method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="predicate"> The predicate used with method. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateTakeWhile(
             [NotNull] ShapedQueryExpression source, [NotNull] LambdaExpression predicate);
 
+        /// <summary>
+        ///     Translates Queryable.ThenBy/ThenByDescending method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="keySelector"> The key selector used with method. </param>
+        /// <param name="ascending"> A value indicating whether the ordering is ascending or not. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateThenBy(
             [NotNull] ShapedQueryExpression source, [NotNull] LambdaExpression keySelector, bool ascending);
 
+        /// <summary>
+        ///     Translates Queryable.Union method over given source.
+        /// </summary>
+        /// <param name="source1"> The shaped query on which the operator is applied. </param>
+        /// <param name="source2"> The other source to perform union with. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateUnion(
             [NotNull] ShapedQueryExpression source1, [NotNull] ShapedQueryExpression source2);
 
+        /// <summary>
+        ///     Translates Queryable.Where method over given source.
+        /// </summary>
+        /// <param name="source"> The shaped query on which the operator is applied. </param>
+        /// <param name="predicate"> The predicate used with method. </param>
+        /// <returns> The shaped query after translation. </returns>
         protected abstract ShapedQueryExpression TranslateWhere(
             [NotNull] ShapedQueryExpression source, [NotNull] LambdaExpression predicate);
     }
