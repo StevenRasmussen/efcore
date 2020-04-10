@@ -463,7 +463,7 @@ namespace Microsoft.EntityFrameworkCore
         /// </summary>
         /// <param name="property"> The property. </param>
         /// <param name="value"> The value to set. </param>
-        public static void SetComputedColumnIsStored([NotNull] this IMutableProperty property, [CanBeNull] bool? value)
+        public static void SetComputedColumnIsStored([NotNull] this IMutableProperty property, bool? value)
             => property.SetOrRemoveAnnotation(
                 RelationalAnnotationNames.ComputedColumnIsStored,
                 value);
@@ -477,7 +477,7 @@ namespace Microsoft.EntityFrameworkCore
         /// <param name="fromDataAnnotation"> Indicates whether the configuration was specified using a data annotation. </param>
         /// <returns> The configured value. </returns>
         public static bool? SetComputedColumnIsStored(
-            [NotNull] this IConventionProperty property, [CanBeNull] bool? value, bool fromDataAnnotation = false)
+            [NotNull] this IConventionProperty property, bool? value, bool fromDataAnnotation = false)
         {
             property.SetOrRemoveAnnotation(RelationalAnnotationNames.ComputedColumnIsStored, value, fromDataAnnotation);
 

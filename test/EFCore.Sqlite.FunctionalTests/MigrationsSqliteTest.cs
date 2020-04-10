@@ -263,6 +263,9 @@ be found in the docs.";
         public override Task Alter_column_change_computed()
             => AssertNotSupportedAsync(base.Alter_column_change_computed, SqliteStrings.ComputedColumnsNotSupported);
 
+        public override Task Alter_column_change_computed_type()
+            => AssertNotSupportedAsync(base.Alter_column_change_computed, SqliteStrings.ComputedColumnsNotSupported);
+
         public override Task Alter_column_add_comment()
             => AssertNotSupportedAsync(base.Alter_column_add_comment, SqliteStrings.InvalidMigrationOperation("AlterColumnOperation"));
 

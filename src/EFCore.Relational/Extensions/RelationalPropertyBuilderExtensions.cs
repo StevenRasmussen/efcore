@@ -370,7 +370,7 @@ namespace Microsoft.EntityFrameworkCore
         public static PropertyBuilder HasComputedColumnSql(
             [NotNull] this PropertyBuilder propertyBuilder,
             [CanBeNull] string sql,
-            [CanBeNull] bool? stored = null)
+            bool? stored = null)
         {
             Check.NotNull(propertyBuilder, nameof(propertyBuilder));
             Check.NullButNotEmpty(sql, nameof(sql));
@@ -396,7 +396,7 @@ namespace Microsoft.EntityFrameworkCore
         public static PropertyBuilder<TProperty> HasComputedColumnSql<TProperty>(
             [NotNull] this PropertyBuilder<TProperty> propertyBuilder,
             [CanBeNull] string sql,
-            [CanBeNull] bool? stored = null)
+            bool? stored = null)
             => (PropertyBuilder<TProperty>)HasComputedColumnSql((PropertyBuilder)propertyBuilder, sql, stored);
 
         /// <summary>

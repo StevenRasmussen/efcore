@@ -153,7 +153,7 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Internal
             bool identity,
             [CanBeNull] string defaultValue,
             [CanBeNull] string computedValue,
-            [CanBeNull] bool? computedValueIsStored)
+            bool? computedValueIsStored)
         {
             var definition = SqlServerResources.LogFoundColumn(diagnostics);
 
