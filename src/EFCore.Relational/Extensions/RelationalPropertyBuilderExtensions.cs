@@ -424,6 +424,33 @@ namespace Microsoft.EntityFrameworkCore
         }
 
         /// <summary>
+        ///     Configures the property to map to a computed column of the given type when targeting a relational database.
+        /// </summary>
+        /// <param name="propertyBuilder"> The builder for the property being configured. </param>
+        /// <param name="stored">
+        ///     If <c>true</c>, the computed value is calculated on row modification and stored in the database like a regular column.
+        ///     If <c>false</c>, the value is computed when the value is read, and does not occupy any actual storage.
+        ///     <c>null</c> selects the database provider default.
+        /// </param>
+        /// <param name="fromDataAnnotation"> Indicates whether the configuration was specified using a data annotation. </param>
+        /// <returns>
+        ///     The same builder instance if the configuration was applied, <c>null</c> otherwise.
+        /// </returns>
+        public static IConventionPropertyBuilder HasComputedColumnIsStored(
+            [NotNull] this IConventionPropertyBuilder propertyBuilder,
+            bool? stored,
+            bool fromDataAnnotation = false)
+        {
+            if (!propertyBuilder.CanSetComputedColumnIsStored(stored, fromDataAnnotation))
+            {
+                return null;
+            }
+
+            propertyBuilder.Metadata.SetComputedColumnIsStored(stored, fromDataAnnotation);
+            return propertyBuilder;
+        }
+
+        /// <summary>
         ///     Returns a value indicating whether the given computed value SQL expression can be set for the column.
         /// </summary>
         /// <param name="propertyBuilder"> The builder for the property being configured. </param>
@@ -437,6 +464,26 @@ namespace Microsoft.EntityFrameworkCore
             => propertyBuilder.CanSetAnnotation(
                 RelationalAnnotationNames.ComputedColumnSql,
                 Check.NullButNotEmpty(sql, nameof(sql)),
+                fromDataAnnotation);
+
+        /// <summary>
+        ///     Returns a value indicating whether the given computed column type can be set for the column.
+        /// </summary>
+        /// <param name="propertyBuilder"> The builder for the property being configured. </param>
+        /// <param name="stored">
+        ///     If <c>true</c>, the computed value is calculated on row modification and stored in the database like a regular column.
+        ///     If <c>false</c>, the value is computed when the value is read, and does not occupy any actual storage.
+        ///     <c>null</c> selects the database provider default.
+        /// </param>
+        /// <param name="fromDataAnnotation"> Indicates whether the configuration was specified using a data annotation. </param>
+        /// <returns> <c>true</c> if the given computed column type can be set for the column. </returns>
+        public static bool CanSetComputedColumnIsStored(
+            [NotNull] this IConventionPropertyBuilder propertyBuilder,
+            bool? stored,
+            bool fromDataAnnotation = false)
+            => propertyBuilder.CanSetAnnotation(
+                RelationalAnnotationNames.ComputedColumnIsStored,
+                stored,
                 fromDataAnnotation);
 
         /// <summary>
